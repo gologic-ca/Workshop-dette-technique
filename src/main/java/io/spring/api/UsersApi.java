@@ -1,5 +1,6 @@
 package io.spring.api;
 
+import static io.spring.api.ResponseFactory.userResponse;
 import static org.springframework.web.bind.annotation.RequestMethod.POST;
 
 import com.fasterxml.jackson.annotation.JsonRootName;
@@ -12,8 +13,6 @@ import io.spring.application.user.UserService;
 import io.spring.core.service.JwtService;
 import io.spring.core.user.User;
 import io.spring.core.user.UserRepository;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 import javax.validation.Valid;
 import javax.validation.constraints.Email;
@@ -46,23 +45,19 @@ public class UsersApi {
 
   @RequestMapping(path = "/users/login", method = POST)
   public ResponseEntity userLogin(@Valid @RequestBody LoginParam loginParam) {
-    Optional<User> optional = userRepository.findByEmail(loginParam.getEmail());
-    if (optional.isPresent()
-        && passwordEncoder.matches(loginParam.getPassword(), optional.get().getPassword())) {
-      UserData userData = userQueryService.findById(optional.get().getId()).get();
-      return ResponseEntity.ok(
-          userResponse(new UserWithToken(userData, jwtService.toToken(optional.get()))));
-    } else {
+    Optional<User> userOptional = userRepository.findByEmail(loginParam.getEmail());
+    if (!userOptional.isPresent()) {
       throw new InvalidAuthenticationException();
     }
-  }
 
-  private Map<String, Object> userResponse(UserWithToken userWithToken) {
-    return new HashMap<String, Object>() {
-      {
-        put("user", userWithToken);
-      }
-    };
+    User user = userOptional.get();
+    if (!passwordEncoder.matches(loginParam.getPassword(), user.getPassword())) {
+      throw new InvalidAuthenticationException();
+    }
+
+    UserData userData = userQueryService.findById(user.getId()).get();
+    return ResponseEntity.ok(
+        userResponse(new UserWithToken(userData, jwtService.toToken(user))));
   }
 }
 
