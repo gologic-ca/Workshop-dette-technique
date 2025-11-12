@@ -33,8 +33,8 @@ public class CurrentUserApi {
       @AuthenticationPrincipal User currentUser,
       @RequestHeader(value = "Authorization") String authorization) {
     UserData userData = userQueryService.findById(currentUser.getId()).get();
-    return ResponseEntity.ok(
-        userResponse(new UserWithToken(userData, authorization.split(" ")[1])));
+    String token = io.spring.api.security.AuthorizationHeaderParser.extractTokenOrThrow(authorization);
+    return ResponseEntity.ok(userResponse(new UserWithToken(userData, token)));
   }
 
   @PutMapping
@@ -45,14 +45,13 @@ public class CurrentUserApi {
 
     userService.updateUser(new UpdateUserCommand(currentUser, updateUserParam));
     UserData userData = userQueryService.findById(currentUser.getId()).get();
-    return ResponseEntity.ok(userResponse(new UserWithToken(userData, token.split(" ")[1])));
+    String extractedToken = io.spring.api.security.AuthorizationHeaderParser.extractTokenOrThrow(token);
+    return ResponseEntity.ok(userResponse(new UserWithToken(userData, extractedToken)));
   }
 
   private Map<String, Object> userResponse(UserWithToken userWithToken) {
-    return new HashMap<String, Object>() {
-      {
-        put("user", userWithToken);
-      }
-    };
+    Map<String, Object> response = new HashMap<>();
+    response.put("user", userWithToken);
+    return response;
   }
 }
